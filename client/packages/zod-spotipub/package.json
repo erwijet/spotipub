@@ -1,6 +1,6 @@
 {
   "name": "zod-spotipub",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Zod schema bindings for spotipub payloads",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
