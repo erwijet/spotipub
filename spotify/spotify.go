@@ -1,50 +1,58 @@
 package spotify
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
-	"sync"
+	"os"
+	"time"
 
-	"github.com/zmb3/spotify/v2"
-	spotifyauth "github.com/zmb3/spotify/v2/auth"
+	libspot "github.com/zmb3/spotify/v2"
+	libspotauth "github.com/zmb3/spotify/v2/auth"
 )
-
-const redirectURI = "http://localhost:3000/callback"
-
-type Unit struct{}
 
 var (
-	auth    = spotifyauth.New(spotifyauth.WithRedirectURL(redirectURI), spotifyauth.WithScopes(spotifyauth.ScopeUserReadCurrentlyPlaying))
-	channel = make(chan Unit)
-	state   = "abc123"
-	once    sync.Once
-	client  *spotify.Client
+	auth    = libspotauth.New(libspotauth.WithRedirectURL(getRedirectUri()), libspotauth.WithScopes(libspotauth.ScopeUserReadCurrentlyPlaying))
+	channel = make(chan int)
+	state   = randState()
+	owned   *libspot.Client
 )
 
-func setClient(c *spotify.Client) {
-	client = c
+func getRedirectUri() string {
+	uri, exists := os.LookupEnv("REDIRECT_URI")
+	if exists {
+		return uri
+	} else {
+		return "http://localhost:3000/callback"
+	}
+}
+
+func randState() string {
+	s := "abcdef123"
+	runes := []rune(s)
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(runes), func(i, j int) {
+		runes[i], runes[j] = runes[j], runes[i]
+	})
+
+	return string(runes)
+}
+
+func setClient(c *libspot.Client) {
+	owned = c
 	close(channel)
 }
 
-func WaitForClient() *spotify.Client {
+func WaitForClient() *libspot.Client {
 	<-channel
-	return client
+	return owned
 }
 
-func Initialize() {
-	url := auth.AuthURL("abc123")
+func BeginAuthFlow() {
+	url := auth.AuthURL(state)
 	fmt.Println("Please log into Spotify: ", url)
-
-	client := WaitForClient()
-
-	currentSong, err := client.PlayerCurrentlyPlaying(context.Background())
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("You are listening to... ", currentSong)
 }
 
 func GetCallback(w http.ResponseWriter, r *http.Request) {
@@ -59,11 +67,18 @@ func GetCallback(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("State mismatch: %s != %s\n", st, state)
 	}
 
-	client := spotify.New(auth.Client(r.Context(), tok))
+	client := libspot.New(auth.Client(r.Context(), tok))
 	fmt.Fprint(w, "login complete!")
 	setClient(client)
 }
 
 func GetCurrent(w http.ResponseWriter, r *http.Request) {
-	// http.Redirect("asdf", w, r)
+	client := WaitForClient()
+	playback, err := client.PlayerCurrentlyPlaying(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	json.NewEncoder(w).Encode(playback)
 }
