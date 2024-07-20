@@ -1,0 +1,27 @@
+{
+  "name": "react-spotipub",
+  "version": "0.1.0",
+  "description": "",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup index.ts --format cjs,esm --dts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@swc/core": "^1.7.0",
+    "@types/react": "^18.3.3",
+    "tsconfig": "workspace:*",
+    "tsup": "^8.2.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "zod-spotipub": "workspace:*"
+  }
+}
