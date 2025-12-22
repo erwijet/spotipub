@@ -54,12 +54,14 @@ func GetCallback(w http.ResponseWriter, r *http.Request) {
 	tok, err := auth.Token(r.Context(), state, r)
 	if err != nil {
 		http.Error(w, "Couldn't get token", http.StatusForbidden)
-		log.Fatal(err)
+		log.Printf("error: %s", err)
+		return
 	}
 
 	if st := r.FormValue("state"); st != state {
 		http.NotFound(w, r)
-		log.Fatalf("State mismatch: %s != %s\n", st, state)
+		log.Printf("State mismatch: %s != %s\n", st, state)
+		return
 	}
 
 	client := libspot.New(auth.Client(context.Background(), tok))
