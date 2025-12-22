@@ -1,4 +1,4 @@
-package spotify
+package playback
 
 import (
 	"context"
@@ -64,7 +64,9 @@ func (n *Notifier) Run() {
 	for {
 		data, err := client.PlayerCurrentlyPlaying(context.Background())
 		if err != nil {
-			log.Fatal(err)
+			log.Printf("spotify notifier: failed to poll playback: %v", err)
+			time.Sleep(5 * time.Second)
+			continue
 		}
 
 		if n.prev_data == nil {
@@ -79,7 +81,7 @@ func (n *Notifier) Run() {
 
 		jitter := math.Abs(float64(progress_delta_sec - libspot.Numeric(time_delta_sec)))
 
-		if jitter > 1 || n.prev_data.Playing != data.Playing {
+		if jitter > 1 || n.prev_data.Playing != data.Playing || n.prev_data.Item.Name != data.Item.Name {
 			n.notifyAll(data)
 		}
 

@@ -14,28 +14,26 @@ var headers = map[string]string{
 }
 
 type SSEWriter struct {
-	underlying *http.ResponseWriter
-	enc        *json.Encoder
+	w   http.ResponseWriter
+	enc *json.Encoder
 }
 
-func NewSSEWriter(underlying *http.ResponseWriter) *SSEWriter {
-	enc := json.NewEncoder(*underlying)
-
-	return &SSEWriter{
-		underlying,
-		enc,
-	}
+func NewSSEWriter(w http.ResponseWriter) *SSEWriter {
+	return &SSEWriter{w: w, enc: json.NewEncoder(w)}
 }
 
 func (s *SSEWriter) WriteHeaders() {
 	for key, value := range headers {
-		(*s.underlying).Header().Set(key, value)
+		s.w.Header().Set(key, value)
 	}
 }
 
 func (s *SSEWriter) WriteEvent(evtname string, payload any) {
-	(*s.underlying).Write([]byte("event:" + evtname + "\ndata:"))
+	s.w.Write([]byte("event:" + evtname + "\ndata:"))
 	s.enc.Encode(payload)
-	(*s.underlying).Write([]byte("\n\n"))
-	(*s.underlying).(http.Flusher).Flush()
+	s.w.Write([]byte("\n\n"))
+
+	if f, ok := s.w.(http.Flusher); ok {
+		f.Flush()
+	}
 }

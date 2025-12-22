@@ -1,7 +1,0 @@
-.turbo/
-dist/
-node_modules/
-
-/**/*/dist
-/**/*/.turbo
-/**/*/node_modules/

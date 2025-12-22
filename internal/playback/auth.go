@@ -1,7 +1,7 @@
-package spotify
+package playback
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"log"
 	"math/rand"
@@ -14,20 +14,15 @@ import (
 )
 
 var (
-	auth    = libspotauth.New(libspotauth.WithRedirectURL(getRedirectUri()), libspotauth.WithScopes(libspotauth.ScopeUserReadCurrentlyPlaying))
+	auth = libspotauth.New(
+		libspotauth.WithClientID(os.Getenv("SPOTIFY_CLIENT_ID")),
+		libspotauth.WithRedirectURL(os.Getenv("SPOTIFY_REDIRECT_URI")),
+		libspotauth.WithScopes(libspotauth.ScopeUserReadCurrentlyPlaying),
+		libspotauth.WithClientSecret(os.Getenv("SPOTIFY_CLIENT_SECRET")))
 	channel = make(chan int)
 	state   = randState()
 	owned   *libspot.Client
 )
-
-func getRedirectUri() string {
-	uri, exists := os.LookupEnv("REDIRECT_URI")
-	if exists {
-		return uri
-	} else {
-		return "http://localhost:3000/callback"
-	}
-}
 
 func randState() string {
 	s := "abcdef123"
@@ -67,18 +62,7 @@ func GetCallback(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("State mismatch: %s != %s\n", st, state)
 	}
 
-	client := libspot.New(auth.Client(r.Context(), tok))
+	client := libspot.New(auth.Client(context.Background(), tok))
 	fmt.Fprint(w, "login complete!")
 	setClient(client)
-}
-
-func GetCurrent(w http.ResponseWriter, r *http.Request) {
-	client := WaitForClient()
-	playback, err := client.PlayerCurrentlyPlaying(r.Context())
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("content-type", "application/json")
-	json.NewEncoder(w).Encode(playback)
 }

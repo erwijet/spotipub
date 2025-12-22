@@ -6,30 +6,32 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/erwijet/spotipub/spotify"
-	"github.com/erwijet/spotipub/sse"
+	"github.com/erwijet/spotipub/internal/playback"
+	"github.com/erwijet/spotipub/internal/sse"
 )
 
 func main() {
-	notifier := spotify.NewNotifier()
+	notifier := playback.NewNotifier()
 	mux := http.NewServeMux()
 
 	go notifier.Run()
-	spotify.BeginAuthFlow()
+	playback.BeginAuthFlow()
 
-	mux.HandleFunc("/current", spotify.GetCurrent)
-	mux.HandleFunc("/callback", spotify.GetCallback)
+	mux.HandleFunc("/current", playback.GetCurrent)
+	mux.HandleFunc("/callback", playback.GetCallback)
 
 	mux.HandleFunc("/sse", func(w http.ResponseWriter, r *http.Request) {
 		l := notifier.NewListener()
 		defer l.Cleanup()
 
-		sse := sse.NewSSEWriter(&w)
+		sse := sse.NewSSEWriter(w)
 		sse.WriteHeaders()
 
-		initial, err := spotify.WaitForClient().PlayerCurrentlyPlaying(context.Background())
+		initial, err := playback.WaitForClient().PlayerCurrentlyPlaying(context.Background())
 		if err != nil {
-			log.Fatal(err)
+			http.Error(w, "failed to fetch current playback", http.StatusBadGateway)
+			log.Printf("sse initial playback fetch failed: %v", err)
+			return
 		}
 		sse.WriteEvent("initial", initial)
 
