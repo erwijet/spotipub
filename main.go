@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -19,6 +20,14 @@ func main() {
 
 	mux.HandleFunc("/current", playback.GetCurrent)
 	mux.HandleFunc("/callback", playback.GetCallback)
+
+	mux.HandleFunc("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		enc := json.NewEncoder(w)
+		enc.Encode(map[string]bool{
+			"ok": true,
+		})
+	})
 
 	mux.HandleFunc("/sse", func(w http.ResponseWriter, r *http.Request) {
 		l := notifier.NewListener()
