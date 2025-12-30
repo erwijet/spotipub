@@ -2,11 +2,10 @@ package playback
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"math"
 	"time"
 
+	"github.com/erwijet/spotipub/internal/logging"
 	libspot "github.com/zmb3/spotify/v2"
 )
 
@@ -45,10 +44,12 @@ func NewNotifier() Notifier {
 }
 
 func (n *Notifier) notifyAll(update *libspot.CurrentlyPlaying) {
+	log := logging.GetLogger("Notifier updateAll")
+
 	if update.Item != nil {
-		fmt.Printf("notifying %d listener(s) [%s@%d ; paused?: %t]\n", len(n.listeners), update.Item.SimpleTrack.Name, update.Progress, !update.Playing)
+		log.Printf("notifying %d listener(s) [%s@%d ; paused?: %t]\n", len(n.listeners), update.Item.SimpleTrack.Name, update.Progress, !update.Playing)
 	} else {
-		fmt.Printf("notifying %d listener(s) [no item]\n", len(n.listeners))
+		log.Printf("notifying %d listener(s) [no item]\n", len(n.listeners))
 	}
 
 	for _, l := range n.listeners {
@@ -60,34 +61,48 @@ func (n *Notifier) notifyAll(update *libspot.CurrentlyPlaying) {
 
 func (n *Notifier) Run() {
 	client := WaitForClient()
+	log := logging.GetLogger("Notifier Run")
 
 	for {
-		data, err := client.PlayerCurrentlyPlaying(context.Background())
-		if err != nil {
-			log.Printf("spotify notifier: failed to poll playback: %v", err)
-			time.Sleep(5 * time.Second)
-			continue
-		}
+		func() {
+			data, err := client.PlayerCurrentlyPlaying(context.Background())
+			if err != nil {
+				log.Printf("spotify notifier: failed to poll playback: %v", err)
+				time.Sleep(5 * time.Second)
+				return
+			}
 
-		if n.prev_data == nil {
-			n.prev_data = data
-			n.prev_time = time.Now()
-			continue
-		}
+			if n.prev_data == nil {
+				n.prev_data = data
+				n.prev_time = time.Now()
+				return
+			}
 
-		cur_time := time.Now()
-		progress_delta_sec := (data.Progress / 1000) - (n.prev_data.Progress / 1000)
-		time_delta_sec := cur_time.Unix() - n.prev_time.Unix()
+			cur_time := time.Now()
+			progress_delta_sec := (data.Progress / 1000) - (n.prev_data.Progress / 1000)
+			time_delta_sec := cur_time.Unix() - n.prev_time.Unix()
 
-		jitter := math.Abs(float64(progress_delta_sec - libspot.Numeric(time_delta_sec)))
+			jitter := math.Abs(float64(progress_delta_sec - libspot.Numeric(time_delta_sec)))
 
-		if jitter > 1 || n.prev_data.Playing != data.Playing || n.prev_data.Item.Name != data.Item.Name {
-			n.notifyAll(data)
-		}
+			defer func() {
+				n.prev_data = data
+				n.prev_time = cur_time
 
-		n.prev_data = data
-		n.prev_time = cur_time
+				time.Sleep(2 * time.Second)
+			}()
 
-		time.Sleep(2 * time.Second)
+			if n.prev_data.Item == nil || data.Item == nil {
+				return
+			}
+
+			if jitter > 1 || n.prev_data.Playing != data.Playing {
+				n.notifyAll(data)
+				return
+			}
+
+			if n.prev_data.Item.Name != data.Item.Name {
+				n.notifyAll(data)
+			}
+		}()
 	}
 }

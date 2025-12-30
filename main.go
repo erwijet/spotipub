@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
+	"github.com/erwijet/spotipub/internal/logging"
 	"github.com/erwijet/spotipub/internal/playback"
 	"github.com/erwijet/spotipub/internal/sse"
 )
@@ -30,6 +30,7 @@ func main() {
 	})
 
 	mux.HandleFunc("/sse", func(w http.ResponseWriter, r *http.Request) {
+		log := logging.GetLogger("/sse")
 		l := notifier.NewListener()
 		defer l.Cleanup()
 
@@ -64,6 +65,6 @@ func main() {
 	//
 
 	if err := http.ListenAndServe(":3000", mux); err != nil {
-		log.Fatal("ListenAndServe: ", err)
+		logging.GetLogger("HTTP").Fatal("ListenAndServe: ", err)
 	}
 }

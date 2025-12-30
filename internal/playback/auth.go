@@ -3,12 +3,12 @@ package playback
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/erwijet/spotipub/internal/logging"
 	libspot "github.com/zmb3/spotify/v2"
 	libspotauth "github.com/zmb3/spotify/v2/auth"
 )
@@ -51,6 +51,8 @@ func BeginAuthFlow() {
 }
 
 func GetCallback(w http.ResponseWriter, r *http.Request) {
+	log := logging.GetLogger("/callback")
+
 	tok, err := auth.Token(r.Context(), state, r)
 	if err != nil {
 		http.Error(w, "Couldn't get token", http.StatusForbidden)
