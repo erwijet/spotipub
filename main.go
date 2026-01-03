@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/erwijet/spotipub/internal/logging"
@@ -12,7 +13,14 @@ import (
 )
 
 func main() {
-	notifier := playback.NewNotifier()
+	sl := playback.NewShameList()
+
+	// load shamelist
+	if path, ok := os.LookupEnv("SHAMELIST_PATH"); ok {
+		sl.Load(path)
+	}
+
+	notifier := playback.NewNotifier(&sl)
 	mux := http.NewServeMux()
 
 	go notifier.Run()

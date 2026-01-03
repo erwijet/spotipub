@@ -3,6 +3,7 @@ package playback
 import (
 	"context"
 	"math"
+	"slices"
 	"time"
 
 	"github.com/erwijet/spotipub/internal/logging"
@@ -13,6 +14,7 @@ type Notifier struct {
 	prev_data *libspot.CurrentlyPlaying
 	prev_time time.Time
 	listeners []Listener
+	shamelist *ShameList
 }
 
 type Listener struct {
@@ -37,8 +39,9 @@ func (l *Listener) Cleanup() {
 	}
 }
 
-func NewNotifier() Notifier {
+func NewNotifier(shamelist *ShameList) Notifier {
 	return Notifier{
+		shamelist: shamelist,
 		listeners: make([]Listener, 0),
 	}
 }
@@ -95,13 +98,35 @@ func (n *Notifier) Run() {
 				return
 			}
 
+			// we switched songs
+			if n.prev_data.Item.Name != data.Item.Name {
+				for _, each := range data.Item.Artists {
+					if slices.Contains(n.shamelist.Artists, each.ID.String()) {
+						log.Printf("Matched shamelist artist id '%s'.", data.Item.ID.String())
+						data.Playing = false
+						data.Item = nil
+					}
+				}
+
+				if data.Item != nil && slices.Contains(n.shamelist.Items, data.Item.ID.String()) {
+					log.Printf("Matched shamelist item id '%s'.", data.Item.ID.String())
+					data.Playing = false
+					data.Item = nil
+				}
+
+				if data.Item != nil && slices.Contains(n.shamelist.Albums, data.Item.Album.ID.String()) {
+					log.Printf("Matched shamelist album id '%s'.", data.Item.Album.ID.String())
+					data.Playing = false
+					data.Item = nil
+				}
+
+				n.notifyAll(data)
+			}
+
+			// we changed position in current song more than expected or play/paused
 			if jitter > 1 || n.prev_data.Playing != data.Playing {
 				n.notifyAll(data)
 				return
-			}
-
-			if n.prev_data.Item.Name != data.Item.Name {
-				n.notifyAll(data)
 			}
 		}()
 	}

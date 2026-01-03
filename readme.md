@@ -33,6 +33,31 @@ ec.addEventListener("initial", onData);
 // (user changes song, scrubs through song, pauses, etc)
 ec.addEventListener("update", onData); 
 ```
+### Shamelist
+
+If you don't want to share 100% of your listening with the world, you can hide behind a shamelist like me.
+
+```yml
+# shamelist.yml
+
+# a list of spotify item ids to exclude
+items: 
+    - 7MwwPyZJ7UKFROj2oVnH6R # caramelldansen
+
+# list of spotify artist ids to exclude.
+# if ANY of the artists of an item matches, it will be excluded
+artists:
+    - 72NhFAGG5Pt91VbheJeEPG #2hollis
+
+# you get the idea at this point...
+albums:
+    - 7F81VnxiHp0jDJtQLcsZWo # can opener's notebook
+```
+
+> Notably, this will only hide from the `/sse` updates. Manually navigating to `/current` will ignore the shamelist.
+> The `/current` route can also be very helpful in determining the Spotify ID of 
+> the content you wish to distance yourself from :) 
+
 
 ## Hosting
 
@@ -43,6 +68,7 @@ Make sure you've created an app on the [spotify developer console](https://devel
 | `SPOTIFY_CLIENT_ID`     | The ClientID of your Spotify App          | `Yes`    |
 | `SPOTIFY_CLIENT_SECRET` | The Secret of your Spotify App            | `Yes`    |
 | `SPOTIFY_REDIRECT_URI`  | The deployed URL, followed by `/callback` | `Yes`    |
+| `SHAMELIST_PATH`        | The path to your `shamelist.yml` file     | `No`     |
 
 ### Sample Docker-Compose
 
